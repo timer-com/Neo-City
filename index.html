@@ -1,0 +1,854 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width,initial-scale=1.0,maximum-scale=1.0,user-scalable=no">
+<title>Мегаполис 3D: Скины, Промокоды, Аккаунты и Игровой Центр</title>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/three.min.js"></script>
+<style>
+*{box-sizing:border-box;margin:0;padding:0;user-select:none;-webkit-user-select:none;font-family:'Segoe UI',Roboto,Arial,sans-serif}
+body,html{width:100%;height:100%;min-height:100vh;overflow:hidden;background:#0b0f19;color:#f8fafc}
+#game-canvas{position:fixed;inset:0;display:block;width:100%;height:100%;z-index:1}
+.hud-panel{position:fixed;z-index:10;background:rgba(15,23,42,.88);backdrop-filter:blur(10px);border:1px solid rgba(56,189,248,.35);border-radius:12px;padding:10px 14px;box-shadow:0 8px 28px rgba(0,0,0,.5);pointer-events:auto}
+#top-left-hud{top:12px;left:12px;display:flex;flex-direction:column;gap:5px;min-width:225px}
+.stat-row{display:flex;justify-content:space-between;align-items:center;font-size:13px;font-weight:600}
+.stat-label{color:#94a3b8}.stat-val{color:#38bdf8;font-family:monospace;font-size:14px}
+.money-val{color:#4ade80}.bank-val{color:#fbbf24}.crypto-val{color:#c084fc}
+.bar-container{width:100%;height:6px;background:#1e293b;border-radius:4px;overflow:hidden;margin-top:2px}
+.bar-fill{height:100%;transition:width .2s}
+#energy-bar{background:linear-gradient(90deg,#f59e0b,#fbbf24);width:100%}
+#xp-bar{background:linear-gradient(90deg,#3b82f6,#38bdf8);width:0%}
+#top-right-hud{top:12px;right:12px;display:flex;flex-direction:column;align-items:flex-end;gap:6px;max-width:54vw}
+.menu-buttons{display:flex;flex-wrap:wrap;gap:5px;justify-content:flex-end}
+.btn{background:linear-gradient(135deg,#0284c7,#0369a1);color:#fff;border:1px solid rgba(255,255,255,.2);padding:6px 11px;border-radius:8px;font-size:12px;font-weight:600;cursor:pointer;transition:.15s}
+.btn:hover{transform:translateY(-1px);filter:brightness(1.15)}.btn:disabled{opacity:.5;cursor:default;transform:none}
+.btn-success{background:linear-gradient(135deg,#16a34a,#15803d)}
+.btn-warning{background:linear-gradient(135deg,#d97706,#b45309)}
+.btn-purple{background:linear-gradient(135deg,#9333ea,#7e22ce)}
+.btn-danger{background:linear-gradient(135deg,#dc2626,#b91c1c)}
+.btn-cloud{background:linear-gradient(135deg,#0ea5e9,#2563eb)}
+.btn-pink{background:linear-gradient(135deg,#db2777,#9d174d)}
+#speedometer{top:12px;left:50%;transform:translateX(-50%);padding:6px 14px;display:flex;gap:12px;align-items:center}
+.speed-num{font-size:21px;font-weight:800;font-family:monospace;color:#38bdf8}
+.speed-unit{font-size:10px;color:#94a3b8;text-transform:uppercase}
+#minimap-container{bottom:12px;right:12px;padding:5px;border-radius:50%;width:136px;height:136px;display:flex;align-items:center;justify-content:center}
+#minimap{width:126px;height:126px;border-radius:50%;background:#0f172a}
+#interaction-prompt{position:fixed;bottom:22%;left:50%;transform:translateX(-50%);background:rgba(15,23,42,.92);border:2px solid #38bdf8;padding:9px 20px;border-radius:30px;font-weight:700;font-size:13px;display:none;align-items:center;gap:8px;cursor:pointer;z-index:50;animation:pulse 1.5s infinite}
+@keyframes pulse{0%,100%{transform:translateX(-50%) scale(1)}50%{transform:translateX(-50%) scale(1.04)}}
+#mission-banner{bottom:12px;left:12px;max-width:285px;border-left:4px solid #4ade80}
+.modal-overlay{position:fixed;inset:0;background:rgba(2,6,23,.82);backdrop-filter:blur(6px);display:none;justify-content:center;align-items:center;z-index:100;padding:12px}
+.modal-box{background:#0f172a;border:1px solid rgba(56,189,248,.4);border-radius:16px;width:100%;max-width:780px;max-height:88vh;display:flex;flex-direction:column;overflow:hidden;box-shadow:0 20px 50px rgba(0,0,0,.85)}
+.modal-header{padding:13px 18px;background:#1e293b;display:flex;justify-content:space-between;align-items:center;border-bottom:1px solid rgba(255,255,255,.1)}
+.modal-title{font-size:16px;font-weight:700;color:#38bdf8}
+.close-btn{background:none;border:none;color:#94a3b8;font-size:24px;cursor:pointer}
+.modal-body{padding:15px;overflow-y:auto;display:flex;flex-direction:column;gap:12px}
+.grid-cards{display:grid;grid-template-columns:repeat(auto-fill,minmax(195px,1fr));gap:10px}
+.card{background:#1e293b;border:1px solid rgba(255,255,255,.1);border-radius:10px;padding:11px;display:flex;flex-direction:column;justify-content:space-between;gap:7px}
+.card.active-card{border-color:#4ade80;box-shadow:0 0 14px rgba(74,222,128,.25)}
+.card h4{color:#f8fafc;font-size:13.5px}.card p{color:#94a3b8;font-size:11px;line-height:1.35}
+.card-price{font-weight:700;color:#4ade80;font-family:monospace;font-size:12.5px}
+.skin-preview{height:76px;border-radius:8px;background:radial-gradient(circle at 50% 35%,#334155,#0f172a);display:flex;align-items:center;justify-content:center;position:relative;overflow:hidden;border:1px solid rgba(255,255,255,.08)}
+.rarity-badge{position:absolute;top:5px;right:6px;font-size:9.5px;padding:2px 6px;border-radius:6px;font-weight:700;text-transform:uppercase}
+#crypto-chart{width:100%;height:140px;background:#020617;border-radius:8px;border:1px solid #1e293b}
+#toast-container{position:fixed;top:76px;left:50%;transform:translateX(-50%);display:flex;flex-direction:column;gap:6px;z-index:200;pointer-events:none}
+.toast{background:rgba(15,23,42,.95);border-left:4px solid #38bdf8;color:#fff;padding:8px 15px;border-radius:8px;font-size:12.5px;font-weight:600;box-shadow:0 8px 20px rgba(0,0,0,.5)}
+#mobile-controls{display:none;position:fixed;bottom:14px;left:14px;right:155px;justify-content:space-between;pointer-events:none;z-index:40}
+.dpad{display:grid;grid-template-columns:repeat(3,42px);grid-template-rows:repeat(3,42px);gap:4px;pointer-events:auto}
+.touch-btn{background:rgba(30,41,59,.75);border:1px solid rgba(56,189,248,.4);border-radius:10px;color:#fff;font-size:15px;display:flex;align-items:center;justify-content:center;touch-action:manipulation}
+.action-pads{display:flex;gap:7px;align-items:flex-end;pointer-events:auto}
+@media(max-width:768px){#mobile-controls{display:flex}#mission-banner{bottom:155px;max-width:205px}#speedometer{top:auto;bottom:155px;right:12px;left:auto;transform:none}#minimap-container{width:92px;height:92px}#minimap{width:82px;height:82px}}
+input[type="number"],input[type="password"],input[type="text"]{background:#020617;border:1px solid #334155;color:#fff;padding:8px 10px;border-radius:6px;font-size:13px;user-select:text;-webkit-user-select:text}
+.form-input{width:100%}
+.cloud-badge{display:inline-flex;align-items:center;gap:6px;font-size:11px;padding:3px 8px;border-radius:12px;background:rgba(30,41,59,.9);border:1px solid rgba(255,255,255,.15);color:#94a3b8;cursor:pointer}
+.dot-online{width:8px;height:8px;border-radius:50%;background:#4ade80;box-shadow:0 0 8px #4ade80}
+.dot-offline{width:8px;height:8px;border-radius:50%;background:#38bdf8}
+.promo-chip{background:#020617;border:1px dashed #ec4899;color:#f472b6;padding:3px 8px;border-radius:6px;font-family:monospace;font-size:11.5px;cursor:pointer}
+.slot-reel{background:#020617;border:2px solid #ec4899;border-radius:10px;width:62px;height:62px;display:flex;align-items:center;justify-content:center;font-size:30px;box-shadow:inset 0 0 12px rgba(236,72,153,.35)}
+.dice-box{background:#020617;border:2px solid #38bdf8;border-radius:10px;width:54px;height:54px;display:flex;align-items:center;justify-content:center;font-size:26px;font-weight:800;color:#38bdf8}
+.chest-btn{background:linear-gradient(135deg,#1e293b,#0f172a);border:2px solid #f59e0b;border-radius:12px;padding:14px;font-size:28px;cursor:pointer;transition:.15s}
+.chest-btn:hover{transform:scale(1.06);border-color:#4ade80}
+#error-banner{display:none;position:fixed;inset:0;z-index:999;background:#0f172a;color:#f8fafc;align-items:center;justify-content:center;text-align:center;padding:24px;flex-direction:column;gap:12px}
+</style>
+</head>
+<body>
+<div id="error-banner"><h2>⚠️ Ошибка запуска 3D-движка</h2><p id="error-msg"></p></div>
+<canvas id="game-canvas"></canvas>
+
+<div id="top-left-hud" class="hud-panel">
+    <div class="stat-row"><span class="stat-label">💵 Наличные:</span><span class="stat-val money-val" id="hud-cash">$0</span></div>
+    <div class="stat-row"><span class="stat-label">🏦 В банке:</span><span class="stat-val bank-val" id="hud-bank">$0</span></div>
+    <div class="stat-row"><span class="stat-label">🪙 MetroCoin:</span><span class="stat-val crypto-val" id="hud-crypto">0.00 MTC</span></div>
+    <div class="stat-row"><span class="stat-label">⭐ Очки / Ур.:</span><span class="stat-val" id="hud-level">0 (Ур. 1)</span></div>
+    <div><div class="stat-row" style="font-size:11px"><span class="stat-label">⚡ Энергия</span><span id="hud-energy-text">100%</span></div><div class="bar-container"><div id="energy-bar" class="bar-fill"></div></div></div>
+    <div><div class="stat-row" style="font-size:11px"><span class="stat-label">💼 <span id="hud-job" style="color:#fff">Безработный</span></span></div><div class="bar-container"><div id="xp-bar" class="bar-fill"></div></div></div>
+    <div><span class="cloud-badge" onclick="openModal('account')"><span class="dot-offline" id="cloud-dot"></span><span id="cloud-status-text">Гость (Создать аккаунт)</span></span></div>
+</div>
+
+<div id="speedometer" class="hud-panel">
+    <div><div class="speed-num" id="hud-speed">0.0</div><div class="speed-unit">км/ч</div></div>
+    <div style="border-left:1px solid #334155;padding-left:10px;font-size:11px;color:#94a3b8;text-align:left">
+        <div>Локация: <span id="hud-mode" style="color:#fff;font-weight:700">Город (Пешком)</span></div>
+        <div>Коорд: <span id="hud-coords">0, 0</span> | <span id="hud-time">12:00</span></div>
+    </div>
+</div>
+
+<div id="top-right-hud" class="hud-panel">
+    <div class="menu-buttons">
+        <button class="btn" onclick="openModal('jobs')">💼 Работа</button>
+        <button class="btn btn-warning" onclick="openModal('bank')">🏦 Банк</button>
+        <button class="btn btn-purple" onclick="openModal('crypto')">📈 Биржа</button>
+        <button class="btn btn-success" onclick="openModal('shop','skins')">👕 Скины и Магазин</button>
+        <button class="btn btn-pink" onclick="openModal('arcade','slots')">🕹️ Игровой Центр</button>
+        <button class="btn btn-pink" onclick="openModal('promo')">🎁 Промокоды</button>
+        <button class="btn" onclick="openModal('inventory')">🎒 Рюкзак</button>
+        <button class="btn btn-cloud" onclick="openModal('account')">👤 Аккаунт</button>
+    </div>
+    <div style="font-size:10px;color:#64748b">WASD — ход | Space — прыжок/тормоз | E — вход | F — авто</div>
+</div>
+
+<div id="mission-banner" class="hud-panel">
+    <div style="font-size:10px;color:#4ade80;font-weight:700;text-transform:uppercase">Текущая задача</div>
+    <div id="mission-desc" style="font-size:12px;margin-top:3px;color:#e2e8f0">Зайдите в здание «🕹️ Игровой Центр» на перекрёстке (розовый маркер E) или откройте меню игр!</div>
+</div>
+
+<div id="minimap-container" class="hud-panel"><canvas id="minimap" width="126" height="126"></canvas></div>
+<div id="interaction-prompt" onclick="triggerInteraction()"><span style="background:#38bdf8;color:#0f172a;padding:2px 7px;border-radius:4px">E</span><span id="interaction-text">Действие</span></div>
+<div id="toast-container"></div>
+
+<div id="mobile-controls">
+    <div class="dpad"><div></div><button class="touch-btn" id="btn-up">▲</button><div></div><button class="touch-btn" id="btn-left">◀</button><button class="touch-btn" id="btn-down">▼</button><button class="touch-btn" id="btn-right">▶</button></div>
+    <div class="action-pads"><button class="touch-btn" style="width:46px;height:46px" id="btn-jump">⬆️</button><button class="touch-btn" style="width:46px;height:46px" id="btn-car">🚗</button><button class="touch-btn" style="width:46px;height:46px;border-color:#4ade80" id="btn-act">E</button></div>
+</div>
+
+<div id="modal-overlay" class="modal-overlay" onclick="if(event.target===this)closeModal()">
+    <div class="modal-box">
+        <div class="modal-header"><span class="modal-title" id="modal-title">Меню</span><button class="close-btn" onclick="closeModal()">&times;</button></div>
+        <div class="modal-body" id="modal-body"></div>
+    </div>
+</div>
+
+<script>
+const $=id=>document.getElementById(id),
+STORAGE_KEY='metropolis_3d_v7',SESSION_KEY='metropolis_3d_sess_v7',CLOUD_URL='https://keyvalue.immanuel.co/api/KeyVal',CLOUD_PREFIX='metro3d_v7_';
+let activeAccount=null,cloudOnline=false,syncTimer=null;
+
+const safeStore={
+    get(k){try{return localStorage.getItem(k)}catch{return null}},
+    set(k,v){try{localStorage.setItem(k,v)}catch{}},
+    del(k){try{localStorage.removeItem(k)}catch{}}
+};
+
+const defaultState={
+    cash:500,bank:1000,crypto:2.5,score:100,energy:100,jobId:'unemployed',jobXp:0,adminMode:false,
+    activeSkin:'default',unlockedSkins:['default'],activePet:null,unlockedPets:[],
+    usedPromos:[],inventory:[{id:'coffee',name:'Эспрессо',count:2,energy:25,desc:'+25% энергии'}],
+    equippedVehicle:'sedan',unlockedVehicles:['sedan'],
+    playerPos:{x:0,y:0,z:12},carPos:{x:8,y:0,z:12,rot:0},timeOfDay:12.0,
+    arcadeStats:{wins:0,losses:0,netProfit:0}
+};
+let gameState=JSON.parse(JSON.stringify(defaultState));
+
+async function hashPass(s){
+    try{
+        if(window.crypto?.subtle){
+            const b=await crypto.subtle.digest('SHA-256',new TextEncoder().encode('m3d_'+s));
+            return Array.from(new Uint8Array(b)).map(x=>x.toString(16).padStart(2,'0')).join('');
+        }
+    }catch{}
+    let h=0;for(let i=0;i<s.length;i++)h=((h<<5)-h)+s.charCodeAt(i)|0;return 'fb_'+Math.abs(h).toString(16);
+}
+const cKey=u=>CLOUD_PREFIX+u.toLowerCase().replace(/[^a-z0-9_]/g,''),uKey=u=>`${STORAGE_KEY}_${u.toLowerCase()}`;
+
+function updateBadge(){
+    $('cloud-dot').className=activeAccount&&cloudOnline?'dot-online':'dot-offline';
+    $('cloud-status-text').innerText=activeAccount?`${activeAccount.username} (${cloudOnline?'Облако':'Локально'})`:'Гость (Создать аккаунт)';
+}
+async function cloudGet(u){const r=await fetch(`${CLOUD_URL}/GetValue/${cKey(u)}/p`,{cache:'no-store'});if(!r.ok)return null;const j=await r.json();return(!j||j==='null')?null:(typeof j==='string'?JSON.parse(j):j)}
+async function cloudSet(u,h,st){return(await fetch(`${CLOUD_URL}/UpdateValue/${cKey(u)}/p/${encodeURIComponent(JSON.stringify({u,h,st,t:Date.now()}))}`,{method:'POST'})).ok}
+
+async function syncCloud(manual=false){
+    if(!activeAccount)return;
+    try{cloudOnline=await cloudSet(activeAccount.username,activeAccount.passHash,gameState);updateBadge();if(manual)showToast(cloudOnline?'☁️ Сохранено в облако!':'⚠️ Ошибка облака')}
+    catch{cloudOnline=false;updateBadge();if(manual)showToast('⚠️ Нет сети')}
+}
+async function pullCloud(manual=false){
+    if(!activeAccount)return;
+    try{
+        const rec=await cloudGet(activeAccount.username);
+        if(rec?.h===activeAccount.passHash&&rec.st){
+            gameState={...defaultState,...rec.st};safeStore.set(uKey(activeAccount.username),JSON.stringify(gameState));
+            applyState();cloudOnline=true;updateBadge();if(manual)showToast('☁️ Прогресс загружен!');
+        }
+    }catch{cloudOnline=false;updateBadge()}
+}
+function loadGame(){
+    const s=safeStore.get(SESSION_KEY);
+    if(s){
+        try{activeAccount=JSON.parse(s)}catch{}
+        if(activeAccount){
+            const ul=safeStore.get(uKey(activeAccount.username));
+            if(ul)try{gameState={...defaultState,...JSON.parse(ul)}}catch{}
+            updateBadge();pullCloud(false);return;
+        }
+    }
+    const g=safeStore.get(STORAGE_KEY);
+    if(g)try{gameState={...defaultState,...JSON.parse(g)}}catch{}
+    updateBadge();
+}
+function saveGame(){
+    if(gameState.adminMode){
+        gameState.cash=Math.max(gameState.cash,999999999);
+        gameState.bank=Math.max(gameState.bank,999999999);
+        gameState.jobXp=Math.max(gameState.jobXp,999999);
+        gameState.score=Math.max(gameState.score,999999);
+    }
+    if(activeAccount){safeStore.set(uKey(activeAccount.username),JSON.stringify(gameState));clearTimeout(syncTimer);syncTimer=setTimeout(()=>syncCloud(false),2500)}
+    else safeStore.set(STORAGE_KEY,JSON.stringify(gameState));
+}
+function resetGame(){
+    safeStore.del(activeAccount?uKey(activeAccount.username):STORAGE_KEY);
+    gameState=JSON.parse(JSON.stringify(defaultState));
+    saveGame();applyState();closeModal();showToast('🗑️ Прогресс сброшен');
+}
+
+const JOBS=[
+    {id:'unemployed',title:'Безработный',pay:0,reqXp:0,energyCost:0,desc:'Свободный житель города.'},
+    {id:'courier',title:'Курьер доставки',pay:180,reqXp:0,energyCost:15,desc:'Развозка заказов по маркерам на карте.'},
+    {id:'barista',title:'Бариста SkyCoffee',pay:260,reqXp:50,energyCost:18,desc:'Работа в кофейне центра.'},
+    {id:'developer',title:'Middle 3D-Разработчик',pay:650,reqXp:180,energyCost:22,desc:'Создание метавселенных (180 XP).'},
+    {id:'trader',title:'Инвест-банкир Сити',pay:1400,reqXp:450,energyCost:25,desc:'Управление активами (450 XP).'},
+    {id:'ceo',title:'Магнат Корпорации',pay:3200,reqXp:1000,energyCost:30,desc:'Глава мегаполиса (1000 XP).'}
+];
+
+const SKINS=[
+    {id:'default',name:'Горожанин',rarity:'Обычный',rColor:'#64748b',price:0,skin:'#f1c27d',shirt:'#3b82f6',pants:'#1e293b',acc:null,speedBonus:1.0,payBonus:1.0,desc:'Базовый городской стиль.'},
+    {id:'street',name:'Уличный Скейтер',rarity:'Обычный',rColor:'#38bdf8',price:450,skin:'#f1c27d',shirt:'#ef4444',pants:'#0f172a',acc:'cap',speedBonus:1.08,payBonus:1.0,desc:'Кепка и худи. +8% к скорости.'},
+    {id:'medic',name:'Парамедик Сити',rarity:'Обычный',rColor:'#10b981',price:750,skin:'#f1c27d',shirt:'#f8fafc',pants:'#dc2626',acc:'cap',speedBonus:1.10,payBonus:1.05,desc:'Форма спасателя. +10% скорость.'},
+    {id:'business',name:'Деловой Босс',rarity:'Редкий',rColor:'#3b82f6',price:1100,skin:'#f1c27d',shirt:'#111827',pants:'#111827',acc:'glasses',speedBonus:1.05,payBonus:1.1,desc:'Костюм и очки. +10% к зарплате.'},
+    {id:'police',name:'Спецназ Сити',rarity:'Редкий',rColor:'#2563eb',price:1800,skin:'#e0ac69',shirt:'#1d4ed8',pants:'#172554',acc:'helmet',speedBonus:1.12,payBonus:1.12,desc:'Тактический шлем. +12% скорость и доход.'},
+    {id:'hacker',name:'Неон Хакер',rarity:'Промо',rColor:'#ec4899',price:-1,skin:'#cbd5e1',shirt:'#09090b',pants:'#18181b',acc:'visor',aura:'#ec4899',speedBonus:1.20,payBonus:1.18,desc:'Эксклюзив за промокод HACKER3D!'},
+    {id:'cyber',name:'Киберпанк 2077',rarity:'Эпический',rColor:'#a855f7',price:3200,skin:'#e2e8f0',shirt:'#7e22ce',pants:'#090d16',acc:'visor',aura:'#c084fc',speedBonus:1.18,payBonus:1.15,desc:'Плазменный визор и фиолетовая аура.'},
+    {id:'samurai',name:'Кибер-Самурай',rarity:'Эпический',rColor:'#e11d48',price:4100,skin:'#f1c27d',shirt:'#9f1239',pants:'#1e1b4b',acc:'horns',aura:'#fb7185',speedBonus:1.24,payBonus:1.18,desc:'Броня сёгуна. +24% к скорости.'},
+    {id:'ninja',name:'Тень Ниндзя',rarity:'Эпический',rColor:'#9333ea',price:4800,skin:'#d6a57c',shirt:'#09090b',pants:'#09090b',acc:'mask',aura:'#ef4444',speedBonus:1.28,payBonus:1.15,desc:'Маска тени: +28% к скорости бега.'},
+    {id:'astronaut',name:'Космонавт NASA',rarity:'Легендарный',rColor:'#f59e0b',price:7500,skin:'#f1c27d',shirt:'#f8fafc',pants:'#e2e8f0',acc:'space',aura:'#38bdf8',speedBonus:1.22,payBonus:1.25,desc:'Скафандр с золотым шлемом. +25% доход.'},
+    {id:'iceking',name:'Ледяной Монарх',rarity:'Легендарный',rColor:'#06b6d4',price:11000,skin:'#bae6fd',shirt:'#0284c7',pants:'#0c4a6e',acc:'crown',aura:'#22d3ee',speedBonus:1.30,payBonus:1.30,desc:'Кристальная корона и ледяная аура.'},
+    {id:'dragon',name:'Кибер-Дракон',rarity:'Промо',rColor:'#f43f5e',price:-1,skin:'#fca5a5',shirt:'#991b1b',pants:'#450a0a',acc:'horns',aura:'#f97316',speedBonus:1.30,payBonus:1.30,desc:'Эксклюзив за промокод DRAGON2026!'},
+    {id:'golden',name:'Золотой Император',rarity:'Мифический',rColor:'#eab308',price:15000,skin:'#fde047',shirt:'#f59e0b',pants:'#b45309',acc:'crown',aura:'#facc15',speedBonus:1.35,payBonus:1.4,desc:'Корона и золотая аура. +35% скорость, +40% доход.'},
+    {id:'admin',name:'Администратор Сити',rarity:'АДМИН',rColor:'#dc2626',price:-2,skin:'#f8fafc',shirt:'#09090b',pants:'#09090b',acc:'admin',aura:'#ef4444',speedBonus:1.55,payBonus:2.0,desc:'Недоступен в магазине. Только по секретному промокоду админа!'}
+];
+
+const PROMOCODES={
+    START2026:{cash:1500,score:150,xp:60,desc:'Стартовый капитал: +$1,500, +150 очков и +60 XP'},
+    CRYPTOVIP:{cash:500,crypto:5.0,score:200,desc:'Крипто-бонус: +5.0 MTC, +$500 и +200 очков'},
+    HACKER3D:{skin:'hacker',cash:800,score:250,desc:'Эксклюзивный скин «Неон Хакер» + $800'},
+    DRAGON2026:{skin:'dragon',cash:2000,score:400,desc:'Мифический скин «Кибер-Дракон» + $2,000'},
+    MEGA10K:{cash:10000,score:500,desc:'Мега-грант мэрии: +$10,000 и +500 очков'},
+    ADMIN2026:{admin:true,skin:'admin',cash:999999999,xp:999999,score:999999,desc:'Секретный доступ Администратора'}
+};
+
+const PETS=[
+    {id:'dog',name:'Робо-Пёс Рекс',price:1200,color:'#cbd5e1',accent:'#38bdf8',bonus:'+10% к очкам за работу'},
+    {id:'cat',name:'Неоновый Кот Луна',price:2500,color:'#1e1b4b',accent:'#c084fc',bonus:'+15% к энергии от еды'},
+    {id:'drone',name:'Дрон-Спутник X1',price:5000,color:'#f59e0b',accent:'#ef4444',bonus:'+20% к деньгам за работу'}
+];
+
+const SHOP_ITEMS=[
+    {id:'coffee',name:'Двойной Эспрессо',price:45,energy:30,desc:'+30% энергии мгновенно.'},
+    {id:'burger',name:'Мега-Бургер',price:110,energy:75,desc:'+75% энергии.'},
+    {id:'sneakers',name:'Кроссовки TurboRun',price:650,type:'gear',desc:'+20% к скорости бега.'},
+    {id:'watch',name:'Часы Rolexion',price:3500,type:'gear',desc:'+500 очков престижа.'}
+];
+
+const VEHICLES=[
+    {id:'sedan',name:'Городской Седан',price:0,maxSpeed:95,accel:26,color:'#e11d48',desc:'Макс. скорость: 95 км/ч.'},
+    {id:'suv',name:'Внедорожник Titan',price:3500,maxSpeed:125,accel:32,color:'#0284c7',desc:'Макс. скорость: 125 км/ч.'},
+    {id:'hypercar',name:'Гиперкар Apex V12',price:12000,maxSpeed:210,accel:55,color:'#facc15',desc:'Разгон до 210 км/ч.'}
+];
+
+let cryptoPrice=142.50,cryptoHistory=[130,134,132,138,145,141,139,144,148,142.5];
+setInterval(()=>{
+    cryptoPrice=Math.max(25,+(cryptoPrice+(Math.random()-.48)*9.5).toFixed(2));
+    cryptoHistory.push(cryptoPrice);if(cryptoHistory.length>25)cryptoHistory.shift();
+    if(gameState.bank>0&&!gameState.adminMode)gameState.bank=+(gameState.bank*1.002).toFixed(2);
+    updateHUD();if(currentModal==='crypto')renderCryptoModal();
+},4000);
+
+function makeTex(type){
+    const c=document.createElement('canvas');c.width=c.height=512;const x=c.getContext('2d');
+    if(type==='asphalt'){
+        x.fillStyle='#1b2128';x.fillRect(0,0,512,512);
+        for(let i=0;i<16000;i++){const s=18+(Math.random()*42|0);x.fillStyle=`rgb(${s},${s+3},${s+8})`;x.fillRect(Math.random()*512,Math.random()*512,2,2)}
+        x.fillStyle='rgba(0,0,0,.35)';x.fillRect(0,0,10,512);x.fillRect(502,0,10,512);
+        x.fillStyle='#facc15';x.fillRect(249,0,5,512);x.fillRect(258,0,5,512);
+        x.fillStyle='#e2e8f0';for(let y=10;y<512;y+=64){x.fillRect(125,y,5,34);x.fillRect(382,y,5,34)}
+    }else if(type==='sidewalk'){
+        x.fillStyle='#64748b';x.fillRect(0,0,512,512);x.strokeStyle='#334155';x.lineWidth=4;
+        for(let i=0;i<=512;i+=64)for(let j=0;j<=512;j+=64){
+            x.fillStyle=((i+j)/64)%2===0?'#708096':'#5b6b82';x.fillRect(i+2,j+2,60,60);x.strokeRect(i,j,64,64);
+            for(let k=0;k<25;k++){x.fillStyle='rgba(255,255,255,.06)';x.fillRect(i+Math.random()*60,j+Math.random()*60,2,2)}
+        }
+    }else if(type==='grass'){
+        x.fillStyle='#15803d';x.fillRect(0,0,512,512);
+        for(let i=0;i<14000;i++){x.fillStyle=Math.random()>.45?'#16a34a':(Math.random()>.5?'#14532d':'#22c55e');x.fillRect(Math.random()*512,Math.random()*512,2,5)}
+    }else if(type==='skyscraper'){
+        x.fillStyle='#090f1d';x.fillRect(0,0,512,512);
+        for(let r=0;r<12;r++)for(let col=0;col<8;col++){
+            const lit=Math.random()>.32,g=x.createLinearGradient(col*64+6,r*42.6+5,col*64+58,r*42.6+37);
+            if(lit){g.addColorStop(0,Math.random()>.25?'#38bdf8':'#fef08a');g.addColorStop(1,'#0284c7')}else{g.addColorStop(0,'#1e293b');g.addColorStop(1,'#0f172a')}
+            x.fillStyle=g;x.fillRect(col*64+6,r*42.6+5,52,32);x.strokeStyle='#334155';x.lineWidth=2;x.strokeRect(col*64+6,r*42.6+5,52,32);
+        }
+    }else if(type==='brick'){
+        x.fillStyle='#6c2710';x.fillRect(0,0,512,512);
+        for(let y=0;y<512;y+=32){const o=(y/32)%2===0?0:32;for(let i=-32;i<512;i+=64){x.fillStyle=(i+y)%128===0?'#9a3412':'#832b0f';x.fillRect(i+o+2,y+2,60,28)}}
+        x.fillStyle='#1e293b';x.fillRect(58,58,140,140);x.fillRect(314,58,140,140);
+        x.fillStyle='#fef3c7';x.fillRect(64,64,128,128);x.fillRect(320,64,128,128);
+    }else if(type==='arcade'){
+        x.fillStyle='#1e1b4b';x.fillRect(0,0,512,512);x.strokeStyle='#ec4899';x.lineWidth=10;x.strokeRect(12,12,488,488);
+        x.fillStyle='#090d16';x.fillRect(40,40,432,120);x.fillStyle='#f472b6';x.font='bold 46px sans-serif';x.textAlign='center';x.fillText('🕹️ ARCADE 3D',256,115);
+        for(let col=0;col<4;col++){x.fillStyle=col%2===0?'#38bdf8':'#c084fc';x.fillRect(55+col*105,210,80,140)}
+    }else{
+        x.fillStyle='#fff';x.fillRect(0,0,512,512);x.fillStyle='rgba(0,0,0,.1)';for(let i=0;i<512;i+=4){x.fillRect(i,0,1,512);x.fillRect(0,i,512,1)}
+    }
+    const t=new THREE.CanvasTexture(c);t.wrapS=t.wrapT=THREE.RepeatWrapping;t.anisotropy=8;t.needsUpdate=true;return t;
+}
+
+let renderer,scene,camera,sunLight,tex,playerGroup,petGroup,carGroup,deliveryMesh,leftArm,rightArm,leftLeg,rightLeg,headGroup,auraRing=null,deliveryTarget=null,activeZone=null,isInsideArcade=false,savedOutdoorPos={x:0,z:12};
+const colliders=[],zones=[],carWheels=[],traffic=[],ARCADE_CENTER={x:300,z:300},
+getViewportSize=()=>({w:window.innerWidth||document.documentElement.clientWidth||800,h:window.innerHeight||document.documentElement.clientHeight||600}),
+addMesh=(p,g,m,x=0,y=0,z=0,sh=false)=>{const o=new THREE.Mesh(g,m);o.position.set(x,y,z);if(sh)o.castShadow=o.receiveShadow=true;p.add(o);return o};
+
+function init3DEngine(){
+    if(typeof THREE==='undefined'){$('error-banner').style.display='flex';$('error-msg').innerText='Не удалось загрузить библиотеку Three.js.';return false}
+    const canvas=$('game-canvas'),{w,h}=getViewportSize();
+    try{renderer=new THREE.WebGLRenderer({canvas,antialias:true})}catch{renderer=new THREE.WebGLRenderer({canvas,antialias:false})}
+    renderer.setSize(w,h,false);renderer.setPixelRatio(Math.min(window.devicePixelRatio||1,2));
+    renderer.shadowMap.enabled=true;renderer.shadowMap.type=THREE.PCFSoftShadowMap;
+
+    scene=new THREE.Scene();scene.background=new THREE.Color(0x1e293b);scene.fog=new THREE.FogExp2(0x1e293b,.0042);
+    camera=new THREE.PerspectiveCamera(60,w/h,.2,450);
+
+    scene.add(new THREE.HemisphereLight(0xdbeafe,0x1e293b,.8));
+    sunLight=new THREE.DirectionalLight(0xfffbeb,1.2);sunLight.position.set(80,140,60);sunLight.castShadow=true;
+    sunLight.shadow.mapSize.set(1024,1024);sunLight.shadow.camera.near=10;sunLight.shadow.camera.far=350;
+    sunLight.shadow.camera.left=sunLight.shadow.camera.bottom=-120;sunLight.shadow.camera.right=sunLight.shadow.camera.top=120;
+    scene.add(sunLight);
+
+    tex={asphalt:makeTex('asphalt'),sidewalk:makeTex('sidewalk'),grass:makeTex('grass'),skyscraper:makeTex('skyscraper'),brick:makeTex('brick'),arcade:makeTex('arcade'),fabric:makeTex('fabric')};
+    tex.grass.repeat.set(40,40);tex.sidewalk.repeat.set(20,20);
+
+    playerGroup=new THREE.Group();petGroup=new THREE.Group();carGroup=new THREE.Group();
+    scene.add(playerGroup,petGroup,carGroup);
+    deliveryMesh=addMesh(scene,new THREE.OctahedronGeometry(1.2),new THREE.MeshBasicMaterial({color:0x4ade80,wireframe:true}));
+    deliveryMesh.visible=false;
+
+    buildCity();buildArcadeInterior();buildPlayerModel();buildPetModel();buildCarModel();spawnTraffic();
+    return true;
+}
+
+function enterArcade(){
+    if(phys.inVehicle)return showToast('⚠️ Сначала выйдите из автомобиля (F)');
+    savedOutdoorPos={x:playerGroup.position.x,z:playerGroup.position.z};isInsideArcade=true;
+    playerGroup.position.set(ARCADE_CENTER.x,0,ARCADE_CENTER.z+7);playerGroup.rotation.y=Math.PI;petGroup.position.copy(playerGroup.position);
+    showToast('🕹️ Вы вошли в Игровой Центр! Подойдите к любому автомату');
+}
+function exitArcade(){
+    isInsideArcade=false;playerGroup.position.set(savedOutdoorPos.x,0,savedOutdoorPos.z);petGroup.position.copy(playerGroup.position);
+    showToast('🌆 Вы вышли из Игрового Центра в город');
+}
+
+function buildArcadeInterior(){
+    const {x:cx,z:cz}=ARCADE_CENTER,wallMat=new THREE.MeshStandardMaterial({color:0x1e1b4b,roughness:.6});
+    addMesh(scene,new THREE.BoxGeometry(22,.2,20),new THREE.MeshStandardMaterial({color:0x0f172a,roughness:.3,metalness:.5}),cx,0,cz).receiveShadow=true;
+    const grid=new THREE.GridHelper(20,20,0xec4899,0x1e293b);grid.position.set(cx,.12,cz);scene.add(grid);
+    addMesh(scene,new THREE.BoxGeometry(22,.3,20),new THREE.MeshStandardMaterial({color:0x090d16}),cx,5.2,cz);
+    [[22,5.2,.4,cx,2.6,cz-10],[22,5.2,.4,cx,2.6,cz+10],[.4,5.2,20,cx-11,2.6,cz],[.4,5.2,20,cx+11,2.6,cz]].forEach(([w,h,d,x,y,z])=>addMesh(scene,new THREE.BoxGeometry(w,h,d),wallMat,x,y,z));
+    [[-4,0xec4899],[4,0x38bdf8]].forEach(([ox,col])=>{const l=new THREE.PointLight(col,1.8,25);l.position.set(cx+ox,4.2,cz-2);scene.add(l)});
+
+    [{x:cx-5.5,z:cz-5.5,col:0xec4899,label:'🎰 Играть: Неон-Слоты 777',game:'slots'},{x:cx,z:cz-5.5,col:0x38bdf8,label:'🎲 Играть: Кибер-Кости (2x)',game:'dice'},{x:cx+5.5,z:cz-5.5,col:0xf59e0b,label:'🎁 Играть: Сейф Удачи (3x)',game:'chest'}].forEach(m=>{
+        addMesh(scene,new THREE.BoxGeometry(1.6,2.4,1.3),new THREE.MeshStandardMaterial({color:0x0f172a,metalness:.6,roughness:.3}),m.x,1.2,m.z);
+        addMesh(scene,new THREE.BoxGeometry(1.25,.95,.1),new THREE.MeshBasicMaterial({color:m.col}),m.x,1.65,m.z+.66);
+        addMesh(scene,new THREE.BoxGeometry(1.6,.35,1.35),new THREE.MeshStandardMaterial({color:m.col,emissive:m.col,emissiveIntensity:.4}),m.x,2.55,m.z);
+        addZone('arc_'+m.game,m.label,m.x,m.z+2.1,'#'+m.col.toString(16).padStart(6,'0'),()=>openModal('arcade',m.game),true);
+    });
+    [-8.5,8.5].forEach(ox=>addMesh(scene,new THREE.BoxGeometry(1.6,.8,5),new THREE.MeshStandardMaterial({color:0x7e22ce}),cx+ox,.45,cz+1));
+    addMesh(scene,new THREE.BoxGeometry(2.6,3.2,.2),new THREE.MeshBasicMaterial({color:0x4ade80}),cx,1.6,cz+9.7);
+    addZone('arc_exit','🚪 Выйти из Игрового Центра в город',cx,cz+8.2,'#4ade80',exitArcade,true);
+}
+
+function buildCity(){
+    const g=addMesh(scene,new THREE.PlaneGeometry(500,500),new THREE.MeshStandardMaterial({map:tex.grass,bumpMap:tex.grass,bumpScale:.08,roughness:.9}));
+    g.rotation.x=-Math.PI/2;g.receiveShadow=true;
+    [-120,-60,0,60,120].forEach(c=>{
+        [0,1].forEach(dir=>{
+            const t=tex.asphalt.clone();t.needsUpdate=true;t.repeat.set(1,22);
+            const r=addMesh(scene,new THREE.PlaneGeometry(14,320),new THREE.MeshStandardMaterial({map:t,bumpMap:t,bumpScale:.04,roughness:.75}),dir?0:c,dir?.04:.03,dir?c:0);
+            r.rotation.x=-Math.PI/2;if(dir)r.rotation.z=Math.PI/2;r.receiveShadow=true;
+        });
+    });
+    let idx=0;
+    [-90,-30,30,90].forEach(bx=>[-90,-30,30,90].forEach(bz=>{
+        idx++;
+        addMesh(scene,new THREE.BoxGeometry(44,.15,44),new THREE.MeshStandardMaterial({map:tex.sidewalk,bumpMap:tex.sidewalk,bumpScale:.06,roughness:.85}),bx,.075,bz).receiveShadow=true;
+        if(bx===30&&bz===-30){
+            addMesh(scene,new THREE.CylinderGeometry(5,5.5,.8,24),new THREE.MeshStandardMaterial({color:0x94a3b8}),bx,.5,bz);
+            addMesh(scene,new THREE.CylinderGeometry(4.5,4.5,.85,24),new THREE.MeshStandardMaterial({color:0x0ea5e9,roughness:.1}),bx,.52,bz);
+            [[-14,-14],[14,-14],[-14,14],[14,14]].forEach(([ox,oz])=>{
+                addMesh(scene,new THREE.CylinderGeometry(.3,.45,3,8),new THREE.MeshStandardMaterial({color:0x78350f}),bx+ox,1.6,bz+oz);
+                addMesh(scene,new THREE.DodecahedronGeometry(2.4),new THREE.MeshStandardMaterial({color:0x16a34a}),bx+ox,4.2,bz+oz);
+            });return;
+        }
+        if(bx===30&&bz===30){
+            addBld(bx+4,bz+4,24,16,24,tex.arcade,0xec4899);
+            addMesh(scene,new THREE.BoxGeometry(16,2.2,1),new THREE.MeshBasicMaterial({color:0xec4899}),bx+4,17.2,bz-7);
+            addMesh(scene,new THREE.BoxGeometry(3.2,3.6,.6),new THREE.MeshBasicMaterial({color:0xf472b6}),bx-2,1.9,bz-8.1);
+            return;
+        }
+        if((bx===-30&&bz===-30)||(bx===-30&&bz===30))addBld(bx,bz,28,45+(idx%3)*12,28,tex.skyscraper,0x38bdf8);
+        else{addBld(bx-9,bz-8,16,18+(idx%4)*8,18,idx%2===0?tex.skyscraper:tex.brick);addBld(bx+9,bz+8,16,14+((idx+1)%3)*7,18,tex.brick)}
+    }));
+    addZone('bank','🏦 Центральный Банк',-16,-16,'#fbbf24',()=>openModal('bank'));
+    addZone('jobs','🏢 Бизнес-Центр Карьеры',-16,44,'#38bdf8',()=>openModal('jobs'));
+    addZone('crypto','📈 Крипто-Биржа MetroX',-16,16,'#c084fc',()=>openModal('crypto'));
+    addZone('shop','👕 ТРЦ: Скины и Магазины',16,-16,'#4ade80',()=>openModal('shop','skins'));
+    addZone('arcade_door','🕹️ Войти в Игровой Центр (Аркада)',28,18,'#ec4899',enterArcade);
+    addZone('cafe','☕ Кофейня SkyCoffee (+40% ⚡)',44,-16,'#f97316',()=>{gameState.energy=Math.min(100,gameState.energy+40);saveGame();showToast('☕ +40% энергии!')});
+}
+function addBld(x,z,w,h,d,t,em=0){
+    const tc=t.clone();tc.needsUpdate=true;tc.repeat.set(Math.max(1,Math.round(w/10)),Math.max(1,Math.round(h/12)));
+    addMesh(scene,new THREE.BoxGeometry(w,h,d),new THREE.MeshStandardMaterial({map:tc,bumpMap:tc,bumpScale:.08,roughness:.38,metalness:.25,emissive:em,emissiveIntensity:em?.18:0}),x,h/2+.15,z,true);
+    colliders.push({minX:x-w/2-.5,maxX:x+w/2+.5,minZ:z-d/2-.5,maxZ:z+d/2+.5});
+}
+function addZone(id,label,x,z,col,act,indoor=false){
+    const r=addMesh(scene,new THREE.RingGeometry(1.4,2.0,32),new THREE.MeshBasicMaterial({color:col,side:THREE.DoubleSide}),x,.22,z);
+    r.rotation.x=-Math.PI/2;
+    if(!indoor)addMesh(scene,new THREE.CylinderGeometry(.15,.15,14,12),new THREE.MeshBasicMaterial({color:col,transparent:true,opacity:.35}),x,7,z);
+    zones.push({id,label,x,z,radius:2.8,mesh:r,action:act,indoor});
+}
+function spawnDelivery(){
+    const pts=[{x:-75,z:-75,n:'Северный квартал'},{x:75,z:-75,n:'Восточный парк'},{x:-75,z:75,n:'Юго-Западный блок'},{x:75,z:75,n:'Сити-Юг'}];
+    deliveryTarget=pts[Math.random()*pts.length|0];
+    deliveryMesh.position.set(deliveryTarget.x,2,deliveryTarget.z);deliveryMesh.visible=true;
+    $('mission-desc').innerText=`📦 Доставка в «${deliveryTarget.n}» (зелёный маркер на карте)`;
+    showToast(`📦 Новый заказ: ${deliveryTarget.n}`);
+}
+
+function buildPlayerModel(){
+    if(!playerGroup)return;
+    playerGroup.clear();auraRing=null;
+    const s=SKINS.find(x=>x.id===gameState.activeSkin)||SKINS[0],
+          skinMat=new THREE.MeshStandardMaterial({color:s.skin,roughness:.55}),
+          shirtMat=new THREE.MeshStandardMaterial({color:s.shirt,map:tex.fabric,bumpMap:tex.fabric,bumpScale:.03,roughness:.65}),
+          pantsMat=new THREE.MeshStandardMaterial({color:s.pants,map:tex.fabric,bumpMap:tex.fabric,bumpScale:.03,roughness:.75}),
+          shoeMat=new THREE.MeshStandardMaterial({color:0x0f172a});
+
+    leftLeg=addMesh(playerGroup,new THREE.BoxGeometry(.18,.80,.20),pantsMat,-.12,.45,0,true);
+    rightLeg=addMesh(playerGroup,new THREE.BoxGeometry(.18,.80,.20),pantsMat,.12,.45,0,true);
+    addMesh(leftLeg,new THREE.BoxGeometry(.20,.10,.28),shoeMat,0,-.40,.04);
+    addMesh(rightLeg,new THREE.BoxGeometry(.20,.10,.28),shoeMat,0,-.40,.04);
+    addMesh(playerGroup,new THREE.BoxGeometry(.46,.62,.24),shirtMat,0,1.15,0,true);
+    leftArm=addMesh(playerGroup,new THREE.BoxGeometry(.14,.58,.14),shirtMat,-.32,1.15,0,true);
+    rightArm=addMesh(playerGroup,new THREE.BoxGeometry(.14,.58,.14),shirtMat,.32,1.15,0,true);
+
+    headGroup=new THREE.Group();headGroup.position.set(0,1.62,0);playerGroup.add(headGroup);
+    addMesh(headGroup,new THREE.BoxGeometry(.24,.26,.24),skinMat,0,0,0,true);
+    const eyeM=new THREE.MeshBasicMaterial({color:s.id==='admin'?0xef4444:0x0f172a});
+    [-.05,.05].forEach(ex=>addMesh(headGroup,new THREE.BoxGeometry(.04,.04,.02),eyeM,ex,.02,.125));
+
+    const accMap={
+        crown:()=>addMesh(headGroup,new THREE.CylinderGeometry(.14,.12,.12,8),new THREE.MeshStandardMaterial({color:0xfacc15,metalness:.85,roughness:.15}),0,.18,0),
+        admin:()=>{addMesh(headGroup,new THREE.CylinderGeometry(.15,.12,.14,8),new THREE.MeshStandardMaterial({color:0xef4444,emissive:0xdc2626,emissiveIntensity:.6}),0,.19,0);addMesh(playerGroup,new THREE.BoxGeometry(.52,.78,.04),new THREE.MeshStandardMaterial({color:0xdc2626,emissive:0x991b1b,emissiveIntensity:.3}),0,1.12,-.15)},
+        visor:()=>addMesh(headGroup,new THREE.BoxGeometry(.27,.07,.06),new THREE.MeshBasicMaterial({color:s.aura||0x38bdf8}),0,.03,.12),
+        cap:()=>{addMesh(headGroup,new THREE.BoxGeometry(.26,.09,.26),new THREE.MeshStandardMaterial({color:0xef4444}),0,.14,0);addMesh(headGroup,new THREE.BoxGeometry(.24,.03,.16),new THREE.MeshStandardMaterial({color:0x111827}),0,.11,.16)},
+        glasses:()=>addMesh(headGroup,new THREE.BoxGeometry(.25,.05,.04),new THREE.MeshBasicMaterial({color:0x020617}),0,.03,.125),
+        helmet:()=>addMesh(headGroup,new THREE.BoxGeometry(.28,.28,.28),new THREE.MeshStandardMaterial({color:0x1e3a8a,metalness:.5}),0,.03,0),
+        mask:()=>addMesh(headGroup,new THREE.BoxGeometry(.25,.14,.25),new THREE.MeshStandardMaterial({color:0x09090b}),0,-.05,0),
+        space:()=>addMesh(headGroup,new THREE.SphereGeometry(.21,16,16),new THREE.MeshStandardMaterial({color:0xf59e0b,metalness:.9,roughness:.1,transparent:true,opacity:.75})),
+        horns:()=>{const hm=new THREE.MeshStandardMaterial({color:0xfacc15,emissive:0xea580c,emissiveIntensity:.4});[-1,1].forEach(d=>{const h=addMesh(headGroup,new THREE.ConeGeometry(.04,.16,6),hm,d*.09,.19,0);h.rotation.z=-d*.25})}
+    };
+    if(s.acc&&accMap[s.acc])accMap[s.acc]();
+    if(s.aura){
+        auraRing=addMesh(playerGroup,new THREE.RingGeometry(.45,.65,24),new THREE.MeshBasicMaterial({color:s.aura,side:THREE.DoubleSide,transparent:true,opacity:.8}),0,.05,0);
+        auraRing.rotation.x=-Math.PI/2;
+    }
+}
+
+function buildPetModel(){
+    if(!petGroup)return;
+    petGroup.clear();
+    if(!gameState.activePet){petGroup.visible=false;return}
+    petGroup.visible=true;
+    const p=PETS.find(x=>x.id===gameState.activePet);
+    addMesh(petGroup,new THREE.BoxGeometry(.35,.28,.50),new THREE.MeshStandardMaterial({color:p.color,roughness:.3}),0,.25,0);
+    addMesh(petGroup,new THREE.SphereGeometry(.1,8,8),new THREE.MeshBasicMaterial({color:p.accent}),0,.38,.24);
+}
+
+function buildCarModel(){
+    if(!carGroup)return;
+    carGroup.clear();carWheels.length=0;
+    const v=VEHICLES.find(x=>x.id===gameState.equippedVehicle)||VEHICLES[0];
+    addMesh(carGroup,new THREE.BoxGeometry(1.95,.65,4.5),new THREE.MeshStandardMaterial({color:v.color,metalness:.6,roughness:.25}),0,.65,0,true);
+    addMesh(carGroup,new THREE.BoxGeometry(1.65,.55,2.3),new THREE.MeshStandardMaterial({color:0x0f172a,metalness:.9,roughness:.1}),0,1.22,-.2);
+    const wg=new THREE.CylinderGeometry(.36,.36,.26,16);wg.rotateZ(Math.PI/2);const wm=new THREE.MeshStandardMaterial({color:0x111827});
+    [[-.95,.36,1.35],[.95,.36,1.35],[-.95,.36,-1.35],[.95,.36,-1.35]].forEach(([wx,wy,wz])=>carWheels.push(addMesh(carGroup,wg,wm,wx,wy,wz)));
+}
+
+function spawnTraffic(){
+    [0x94a3b8,0x3b82f6,0xeab308,0x10b981].forEach((col,i)=>{
+        const dir=i%2===0?1:-1;
+        traffic.push({mesh:addMesh(scene,new THREE.BoxGeometry(1.9,1.2,4.2),new THREE.MeshStandardMaterial({color:col,metalness:.4}),[-60,0,60][i%3]+dir*3.2,.65,(i-2)*50),dir,speed:12});
+    });
+}
+
+function applyState(){
+    buildPlayerModel();buildPetModel();buildCarModel();isInsideArcade=false;
+    if(playerGroup)playerGroup.position.set(gameState.playerPos.x,0,gameState.playerPos.z);
+    if(carGroup){carGroup.position.set(gameState.carPos.x,0,gameState.carPos.z);carGroup.rotation.y=gameState.carPos.rot||0}
+    if(petGroup&&playerGroup)petGroup.position.copy(playerGroup.position);
+    updateHUD();
+}
+
+const keys={};
+window.addEventListener('keydown',e=>{if(['INPUT','TEXTAREA'].includes(document.activeElement?.tagName))return;keys[e.code]=true;if(e.code==='KeyE')triggerInteraction();if(e.code==='KeyF')toggleVehicle()});
+window.addEventListener('keyup',e=>{keys[e.code]=false});
+[['btn-up','KeyW'],['btn-down','KeyS'],['btn-left','KeyA'],['btn-right','KeyD'],['btn-jump','Space']].forEach(([id,c])=>{
+    const el=$(id);if(el){el.addEventListener('touchstart',e=>{e.preventDefault();keys[c]=true});el.addEventListener('touchend',e=>{e.preventDefault();keys[c]=false})}
+});
+$('btn-act')?.addEventListener('touchstart',e=>{e.preventDefault();triggerInteraction()});
+$('btn-car')?.addEventListener('touchstart',e=>{e.preventDefault();toggleVehicle()});
+
+let camYaw=0,camPitch=.35,drag=false,pm={x:0,y:0};
+$('game-canvas').addEventListener('mousedown',e=>{drag=true;pm={x:e.clientX,y:e.clientY}});
+window.addEventListener('mouseup',()=>drag=false);
+window.addEventListener('mousemove',e=>{if(!drag)return;camYaw-=(e.clientX-pm.x)*.006;camPitch=Math.max(.1,Math.min(1.2,camPitch+(e.clientY-pm.y)*.006));pm={x:e.clientX,y:e.clientY}});
+
+const phys={inVehicle:false,velY:0,grounded:true,carSpeed:0,walk:0};
+function toggleVehicle(){
+    if(isInsideArcade)return showToast('⚠️ Внутри помещения нельзя использовать авто');
+    if(phys.inVehicle){
+        phys.inVehicle=false;playerGroup.visible=true;
+        playerGroup.position.set(carGroup.position.x-Math.cos(carGroup.rotation.y)*2.2,0,carGroup.position.z+Math.sin(carGroup.rotation.y)*2.2);
+        showToast('🚶 Вы вышли из авто');
+    }else if(playerGroup.position.distanceTo(carGroup.position)<4.5){
+        phys.inVehicle=true;playerGroup.visible=false;showToast('🚘 Вы сели за руль');
+    }else showToast('⚠️ Подойдите ближе к авто');
+}
+function hitWall(nx,nz,r){
+    if(isInsideArcade){
+        const {x:cx,z:cz}=ARCADE_CENTER;
+        return nx<cx-9.8||nx>cx+9.8||nz<cz-8.8||nz>cz+8.8||(nz<cz-4.4&&nz>cz-6.6&&(Math.abs(nx-(cx-5.5))<1.1||Math.abs(nx-cx)<1.1||Math.abs(nx-(cx+5.5))<1.1));
+    }
+    return Math.abs(nx)>155||Math.abs(nz)>155||colliders.some(c=>nx+r>c.minX&&nx-r<c.maxX&&nz+r>c.minZ&&nz-r<c.maxZ);
+}
+
+function updatePhysics(dt){
+    gameState.timeOfDay=(gameState.timeOfDay+dt*.05)%24;
+    const night=gameState.timeOfDay<6||gameState.timeOfDay>20,bgHex=isInsideArcade?0x090d16:(night?0x050811:0x1e293b);
+    sunLight.intensity=isInsideArcade?.4:(night?.25:1.2);scene.background.setHex(bgHex);scene.fog.color.setHex(bgHex);
+    if(auraRing)auraRing.rotation.z+=dt*2;
+
+    const fwd=(keys['KeyW']||keys['ArrowUp']?1:0)-(keys['KeyS']||keys['ArrowDown']?1:0),
+          trn=(keys['KeyA']||keys['ArrowLeft']?1:0)-(keys['KeyD']||keys['ArrowRight']?1:0);
+    let kmh=0;
+
+    if(!phys.inVehicle){
+        const sk=SKINS.find(x=>x.id===gameState.activeSkin)||SKINS[0],
+              spd=6.2*sk.speedBonus*(gameState.inventory.some(i=>i.id==='sneakers')?1.2:1.0);
+        if(trn)playerGroup.rotation.y+=trn*2.8*dt;
+        if(fwd){
+            const dx=Math.sin(playerGroup.rotation.y)*fwd*spd*dt,dz=Math.cos(playerGroup.rotation.y)*fwd*spd*dt;
+            if(!hitWall(playerGroup.position.x+dx,playerGroup.position.z,.45))playerGroup.position.x+=dx;
+            if(!hitWall(playerGroup.position.x,playerGroup.position.z+dz,.45))playerGroup.position.z+=dz;
+            phys.walk+=dt*12;leftLeg.rotation.x=rightArm.rotation.x=Math.sin(phys.walk)*.6;rightLeg.rotation.x=leftArm.rotation.x=-Math.sin(phys.walk)*.6;
+            kmh=Math.abs(fwd*spd*3.6);
+        }else leftLeg.rotation.x=rightLeg.rotation.x=leftArm.rotation.x=rightArm.rotation.x=0;
+
+        if(keys['Space']&&phys.grounded){phys.velY=5.4;phys.grounded=false}
+        phys.velY-=14.5*dt;playerGroup.position.y+=phys.velY*dt;
+        if(playerGroup.position.y<=0){playerGroup.position.y=0;phys.velY=0;phys.grounded=true}
+
+        if(petGroup.visible){
+            petGroup.position.x+=(playerGroup.position.x-Math.sin(playerGroup.rotation.y)*1.1+.6-petGroup.position.x)*4*dt;
+            petGroup.position.z+=(playerGroup.position.z-Math.cos(playerGroup.rotation.y)*1.1-petGroup.position.z)*4*dt;
+            petGroup.position.y=Math.abs(Math.sin(phys.walk))*.12;petGroup.rotation.y=playerGroup.rotation.y;
+        }
+        const camDist=isInsideArcade?4.6:6.5,camH=isInsideArcade?2.6:3.2;
+        camera.position.lerp(new THREE.Vector3(playerGroup.position.x-Math.sin(playerGroup.rotation.y+camYaw)*camDist,playerGroup.position.y+camH+camPitch*2.2,playerGroup.position.z-Math.cos(playerGroup.rotation.y+camYaw)*camDist),8*dt);
+        camera.lookAt(playerGroup.position.x,playerGroup.position.y+1.35,playerGroup.position.z);
+    }else{
+        const v=VEHICLES.find(x=>x.id===gameState.equippedVehicle)||VEHICLES[0],maxMs=v.maxSpeed/3.6;
+        if(fwd>0)phys.carSpeed+=v.accel*.45*dt;else if(fwd<0)phys.carSpeed-=v.accel*.6*dt;else phys.carSpeed*=(1-1.4*dt);
+        if(keys['Space'])phys.carSpeed*=(1-5.5*dt);
+        phys.carSpeed=Math.max(-maxMs*.35,Math.min(maxMs,phys.carSpeed));
+        if(Math.abs(phys.carSpeed)>.3)carGroup.rotation.y+=trn*2.1*(phys.carSpeed>=0?1:-1)*dt;
+        const dx=Math.sin(carGroup.rotation.y)*phys.carSpeed*dt,dz=Math.cos(carGroup.rotation.y)*phys.carSpeed*dt;
+        if(!hitWall(carGroup.position.x+dx,carGroup.position.z+dz,1.4)){carGroup.position.x+=dx;carGroup.position.z+=dz}else phys.carSpeed*=-.35;
+        carWheels.forEach(w=>w.rotation.x+=(phys.carSpeed*dt)/.36);
+        playerGroup.position.copy(carGroup.position);kmh=Math.abs(phys.carSpeed*3.6);
+        camera.position.lerp(new THREE.Vector3(carGroup.position.x-Math.sin(carGroup.rotation.y+camYaw)*9.5,carGroup.position.y+4.2+camPitch*3,carGroup.position.z-Math.cos(carGroup.rotation.y+camYaw)*9.5),8*dt);
+        camera.lookAt(carGroup.position.x,carGroup.position.y+1.2,carGroup.position.z);
+    }
+
+    traffic.forEach(t=>{t.mesh.position.z+=t.dir*t.speed*dt;if(Math.abs(t.mesh.position.z)>150)t.mesh.position.z*=-1});
+    const pos=phys.inVehicle?carGroup.position:playerGroup.position;
+    activeZone=zones.find(z=>{z.mesh.rotation.z+=dt;return Math.hypot(pos.x-z.x,pos.z-z.z)<z.radius})||null;
+    const pr=$('interaction-prompt');
+    if(activeZone){pr.style.display='flex';$('interaction-text').innerText=activeZone.label}
+    else if(!isInsideArcade&&!phys.inVehicle&&playerGroup.position.distanceTo(carGroup.position)<4.5){pr.style.display='flex';$('interaction-text').innerText='Сесть в авто (F/E)';activeZone={action:toggleVehicle}}
+    else pr.style.display='none';
+
+    if(!isInsideArcade&&deliveryTarget&&deliveryMesh.visible){
+        deliveryMesh.rotation.y+=2*dt;
+        if(Math.hypot(pos.x-deliveryTarget.x,pos.z-deliveryTarget.z)<4){
+            deliveryMesh.visible=false;deliveryTarget=null;
+            const sk=SKINS.find(x=>x.id===gameState.activeSkin)||SKINS[0],
+                  rew=Math.round(240*(gameState.activePet==='drone'?1.2:1)*sk.payBonus);
+            gameState.cash+=rew;gameState.score+=50;gameState.jobXp+=25;saveGame();
+            showToast(`✅ Доставка выполнена! +$${rew}, +50 очков`);
+            $('mission-desc').innerText='Заказ доставлен! Возьмите новый в меню «Работа».';
+        }
+    }
+    $('hud-speed').innerText=kmh.toFixed(1);
+    $('hud-mode').innerText=isInsideArcade?'Игровой Центр':(phys.inVehicle?'Авто':'Город (Пешком)');
+    $('hud-coords').innerText=isInsideArcade?'Зал Аркады':`${Math.round(pos.x)},${Math.round(pos.z)}`;
+    $('hud-time').innerText=`${String(Math.floor(gameState.timeOfDay)).padStart(2,'0')}:${String(Math.floor((gameState.timeOfDay%1)*60)).padStart(2,'0')}`;
+    if(!isInsideArcade){
+        gameState.playerPos={x:playerGroup.position.x,y:0,z:playerGroup.position.z};
+        gameState.carPos={x:carGroup.position.x,y:0,z:carGroup.position.z,rot:carGroup.rotation.y};
+    }
+}
+function triggerInteraction(){if(activeZone?.action)activeZone.action()}
+
+const mCtx=$('minimap').getContext('2d');
+function drawMinimap(){
+    if(!playerGroup||!carGroup)return;
+    mCtx.fillStyle='#0f172a';mCtx.fillRect(0,0,126,126);
+    mCtx.save();mCtx.translate(63,63);
+    if(isInsideArcade){
+        mCtx.strokeStyle='#ec4899';mCtx.lineWidth=2;mCtx.strokeRect(-45,-40,90,80);
+        mCtx.fillStyle='#ec4899';mCtx.fillRect(-26,-26,8,8);mCtx.fillStyle='#38bdf8';mCtx.fillRect(-4,-26,8,8);mCtx.fillStyle='#f59e0b';mCtx.fillRect(18,-26,8,8);
+        mCtx.fillStyle='#4ade80';mCtx.fillRect(-8,32,16,6);
+        mCtx.fillStyle='#fff';mCtx.beginPath();mCtx.arc((playerGroup.position.x-ARCADE_CENTER.x)*4.2,(playerGroup.position.z-ARCADE_CENTER.z)*4.2,4,0,Math.PI*2);mCtx.fill();
+        mCtx.restore();return;
+    }
+    const pos=phys.inVehicle?carGroup.position:playerGroup.position,sc=.5;
+    mCtx.strokeStyle='#334155';mCtx.lineWidth=6;
+    [-120,-60,0,60,120].forEach(c=>{mCtx.beginPath();mCtx.moveTo((c-pos.x)*sc,-150);mCtx.lineTo((c-pos.x)*sc,150);mCtx.stroke();mCtx.beginPath();mCtx.moveTo(-150,(c-pos.z)*sc);mCtx.lineTo(150,(c-pos.z)*sc);mCtx.stroke()});
+    zones.filter(z=>!z.indoor).forEach(z=>{mCtx.fillStyle=z.mesh.material.color.getStyle();mCtx.beginPath();mCtx.arc((z.x-pos.x)*sc,(z.z-pos.z)*sc,3.5,0,Math.PI*2);mCtx.fill()});
+    if(deliveryTarget&&deliveryMesh?.visible){mCtx.fillStyle='#4ade80';mCtx.beginPath();mCtx.arc((deliveryTarget.x-pos.x)*sc,(deliveryTarget.z-pos.z)*sc,5,0,Math.PI*2);mCtx.fill()}
+    if(!phys.inVehicle){mCtx.fillStyle='#f43f5e';mCtx.fillRect((carGroup.position.x-pos.x)*sc-3,(carGroup.position.z-pos.z)*sc-3,6,6)}
+    mCtx.fillStyle='#38bdf8';mCtx.beginPath();mCtx.arc(0,0,4,0,Math.PI*2);mCtx.fill();mCtx.restore();
+}
+function updateHUD(){
+    $('hud-cash').innerText=gameState.adminMode?'∞ ($999M+)':`$${Math.floor(gameState.cash).toLocaleString()}`;
+    $('hud-bank').innerText=gameState.adminMode?'∞ ($999M+)':`$${Math.floor(gameState.bank).toLocaleString()}`;
+    $('hud-crypto').innerText=`${gameState.crypto.toFixed(2)} MTC`;
+    $('hud-level').innerText=gameState.adminMode?'∞ (ADMIN)':`${gameState.score} (Ур. ${Math.floor(gameState.score/250)+1})`;
+    $('hud-energy-text').innerText=`${Math.round(gameState.energy)}%`;
+    $('energy-bar').style.width=`${gameState.energy}%`;
+    $('hud-job').innerText=(JOBS.find(j=>j.id===gameState.jobId)||JOBS[0]).title;
+    $('xp-bar').style.width=gameState.adminMode?'100%':`${Math.min(100,(gameState.jobXp%200)/2)}%`;
+}
+function showToast(msg){const t=document.createElement('div');t.className='toast';t.innerText=msg;$('toast-container').appendChild(t);setTimeout(()=>t.remove(),3200)}
+
+let currentModal=null,arcadeTab='slots',arcadeBet=100;
+function openModal(type,sub='skins'){
+    currentModal=type;$('modal-overlay').style.display='flex';
+    const titles={jobs:'💼 Карьера и Заработок',bank:'🏦 Центральный Банк',crypto:'📈 Крипто-Биржа MetroX',shop:'👕 Гардероб 3D-Скинов и Магазины',arcade:'🕹️ Игровой Центр (Аркада на деньги)',promo:'🎁 Активация Промокодов',inventory:'🎒 Рюкзак',account:'👤 Облачный Аккаунт'},
+          renders={jobs:renderJobsModal,bank:renderBankModal,crypto:renderCryptoModal,shop:()=>renderShopModal(sub),arcade:()=>renderArcadeModal(sub||'slots'),promo:renderPromoModal,inventory:renderInventoryModal,account:renderAccountModal};
+    $('modal-title').innerText=titles[type]||'Меню';
+    if(renders[type])renders[type]();
+}
+function closeModal(){currentModal=null;$('modal-overlay').style.display='none'}
+
+function renderArcadeModal(tab){
+    arcadeTab=tab;
+    if(!gameState.arcadeStats)gameState.arcadeStats={wins:0,losses:0,netProfit:0};
+    const st=gameState.arcadeStats,
+          games={
+              slots:`<div class="card active-card" style="align-items:center;text-align:center"><h4>🎰 Автомат «Неон-Слоты 777»</h4><p>3 одинаковых символа = <b>x5</b> от ставки! 2 одинаковых = <b>x1.8</b>! Иначе ставка сгорает.</p><div style="display:flex;gap:12px;margin:10px 0"><div class="slot-reel" id="reel-0">🍒</div><div class="slot-reel" id="reel-1">💎</div><div class="slot-reel" id="reel-2">7️⃣</div></div><div id="arcade-result" style="font-size:13px;font-weight:700;min-height:20px;color:#38bdf8">Выберите ставку и крутите барабан!</div><button class="btn btn-pink" style="padding:9px 24px;font-size:14px;margin-top:4px" onclick="playSlots()">🎲 Крутить за $${arcadeBet}</button></div>`,
+              dice:`<div class="card active-card" style="align-items:center;text-align:center"><h4>🎲 Кибер-Кости (Угадай диапазон)</h4><p>Бросаются 2 кубика (сумма от 2 до 12). Угадайте исход и получите <b>x2</b> (или <b>x5</b> за «Ровно 7»).</p><div style="display:flex;gap:12px;margin:10px 0"><div class="dice-box" id="dice-1">?</div><div class="dice-box" id="dice-2">?</div></div><div id="arcade-result" style="font-size:13px;font-weight:700;min-height:20px;color:#38bdf8">Сделайте прогноз на бросок:</div><div style="display:flex;gap:8px;flex-wrap:wrap;justify-content:center;margin-top:4px"><button class="btn btn-success" onclick="playDice('low')">Меньше 7 (x2)</button><button class="btn btn-warning" onclick="playDice('seven')">Ровно 7 (x5)</button><button class="btn btn-purple" onclick="playDice('high')">Больше 7 (x2)</button></div></div>`,
+              chest:`<div class="card active-card" style="align-items:center;text-align:center"><h4>🎁 Сейф Удачи (1 из 3)</h4><p>В одном из трёх сейфов лежит приз <b>x2.8</b> от ставки, а два других пусты!</p><div style="display:flex;gap:14px;margin:10px 0">${[0,1,2].map(i=>`<button class="chest-btn" onclick="playChest(${i})">🧰</button>`).join('')}</div><div id="arcade-result" style="font-size:13px;font-weight:700;min-height:20px;color:#38bdf8">Нажмите на любой сейф (ставка $${arcadeBet})</div></div>`
+          };
+    $('modal-body').innerHTML=`
+        <div style="display:flex;justify-content:space-between;align-items:center;flex-wrap:wrap;gap:8px;background:#1e293b;padding:8px 12px;border-radius:10px">
+            <div style="font-size:12px">💵 Наличные: <b style="color:#4ade80">${gameState.adminMode?'∞':'$'+Math.floor(gameState.cash)}</b> | Побед: <b>${st.wins}</b> / Поражений: <b>${st.losses}</b> | Итог: <b style="color:${st.netProfit>=0?'#4ade80':'#f87171'}">${st.netProfit>=0?'+':''}$${st.netProfit}</b></div>
+            <div style="display:flex;gap:4px;align-items:center"><span style="font-size:11px;color:#94a3b8">Ставка:</span>${[50,100,500,1000].map(b=>`<button class="btn ${arcadeBet===b?'btn-success':''}" style="padding:4px 8px;font-size:11px" onclick="arcadeBet=${b};renderArcadeModal('${tab}')">$${b}</button>`).join('')}</div>
+        </div>
+        <div style="display:flex;gap:6px;flex-wrap:wrap">
+            <button class="btn ${tab==='slots'?'btn-pink':''}" onclick="renderArcadeModal('slots')">🎰 Неон-Слоты</button>
+            <button class="btn ${tab==='dice'?'btn-pink':''}" onclick="renderArcadeModal('dice')">🎲 Кибер-Кости</button>
+            <button class="btn ${tab==='chest'?'btn-pink':''}" onclick="renderArcadeModal('chest')">🎁 Сейф Удачи</button>
+        </div>${games[tab]}`;
+}
+
+function finishArcadeRound(winAmount,msg,delay){
+    if(!gameState.arcadeStats)gameState.arcadeStats={wins:0,losses:0,netProfit:0};
+    if(winAmount>0){gameState.cash+=winAmount;gameState.score+=Math.max(10,Math.round(winAmount/25));gameState.arcadeStats.wins++;gameState.arcadeStats.netProfit+=winAmount-arcadeBet;showToast(`🎉 Выигрыш +$${winAmount}!`)}
+    else{gameState.arcadeStats.losses++;gameState.arcadeStats.netProfit-=arcadeBet;showToast(`💸 Проигрыш -$${arcadeBet}`)}
+    saveGame();updateHUD();
+    const resEl=$('arcade-result');
+    if(resEl){resEl.innerText=msg;resEl.style.color=winAmount>0?'#4ade80':'#f87171'}
+    const cur=arcadeTab;
+    setTimeout(()=>{if(currentModal==='arcade'&&arcadeTab===cur)renderArcadeModal(cur)},delay);
+}
+
+function playSlots(){
+    if(gameState.cash<arcadeBet)return showToast('⚠️ Недостаточно наличных для этой ставки!');
+    gameState.cash-=arcadeBet;
+    const syms=['🍒','🍋','💎','⚡','7️⃣'],r=[0,1,2].map(i=>{const s=syms[Math.random()*syms.length|0];if($('reel-'+i))$('reel-'+i).innerText=s;return s}),
+          win=r[0]===r[1]&&r[1]===r[2]?arcadeBet*5:(r[0]===r[1]||r[1]===r[2]||r[0]===r[2]?Math.round(arcadeBet*1.8):0);
+    finishArcadeRound(win,win===arcadeBet*5?`ДЖЕКПОТ! Выпало ${r.join(' ')} — выигрыш +$${win}!`:(win?`Совпадение пары ${r.join(' ')} — выигрыш +$${win}!`:`Мимо (${r.join(' ')}). Вы проиграли $${arcadeBet}.`),1400);
+}
+
+function playDice(choice){
+    if(gameState.cash<arcadeBet)return showToast('⚠️ Недостаточно наличных для этой ставки!');
+    gameState.cash-=arcadeBet;
+    const d1=1+(Math.random()*6|0),d2=1+(Math.random()*6|0),sum=d1+d2;
+    if($('dice-1'))$('dice-1').innerText=d1;if($('dice-2'))$('dice-2').innerText=d2;
+    const win=(choice==='low'&&sum<7)||(choice==='high'&&sum>7)?arcadeBet*2:(choice==='seven'&&sum===7?arcadeBet*5:0);
+    finishArcadeRound(win,win>0?`Выпало ${d1}+${d2}=${sum}! Вы выиграли +$${win}!`:`Выпало ${d1}+${d2}=${sum}. Проигрыш -$${arcadeBet}.`,1400);
+}
+
+function playChest(pick){
+    if(gameState.cash<arcadeBet)return showToast('⚠️ Недостаточно наличных для этой ставки!');
+    gameState.cash-=arcadeBet;
+    const prizeIdx=Math.random()*3|0,win=pick===prizeIdx?Math.round(arcadeBet*2.8):0;
+    finishArcadeRound(win,win>0?`💰 В сейфе №${pick+1} оказался клад! Выигрыш +$${win}!`:`💨 Сейф №${pick+1} пуст (приз был в №${prizeIdx+1}). Проигрыш -$${arcadeBet}.`,1300);
+}
+
+function renderPromoModal(){
+    const used=gameState.usedPromos||[],publicCodes=Object.entries(PROMOCODES).filter(([,d])=>!d.admin);
+    $('modal-body').innerHTML=`
+        <div class="card active-card"><h4>Введите секретный промокод</h4><p>Получайте бонусные деньги, MetroCoin, опыт карьеры и эксклюзивные 3D-скины.</p><div style="display:flex;gap:8px;margin-top:4px"><input id="promo-input" class="form-input" placeholder="Введите код..." style="text-transform:uppercase;font-family:monospace"><button class="btn btn-pink" onclick="redeemPromo()">Активировать</button></div></div>
+        <div class="card"><h4>Публичные коды (нажмите, чтобы подставить):</h4><div style="display:flex;flex-wrap:wrap;gap:6px;margin-top:4px">${publicCodes.map(([code])=>{const isUsed=used.includes(code);return `<span class="promo-chip" style="${isUsed?'opacity:.45;text-decoration:line-through':''}" onclick="$('promo-input').value='${code}'">${code} ${isUsed?'✓':''}</span>`}).join('')}</div></div>
+        <div class="grid-cards">${publicCodes.map(([code,data])=>`<div class="card" style="${used.includes(code)?'opacity:.55':''}"><div style="display:flex;justify-content:space-between;align-items:center"><h4 style="color:#f472b6;font-family:monospace">${code}</h4><span style="font-size:10px;color:${used.includes(code)?'#4ade80':'#94a3b8'}">${used.includes(code)?'АКТИВИРОВАН':'ДОСТУПЕН'}</span></div><p>${data.desc}</p></div>`).join('')}</div>`;
+}
+
+function redeemPromo(){
+    const code=($('promo-input')?.value||'').trim().toUpperCase();
+    if(!code)return showToast('⚠️ Введите промокод');
+    if(!gameState.usedPromos)gameState.usedPromos=[];
+    if(gameState.usedPromos.includes(code))return showToast('⚠️ Вы уже активировали этот промокод!');
+    const reward=PROMOCODES[code];
+    if(!reward)return showToast('❌ Неверный или несуществующий промокод');
+    gameState.usedPromos.push(code);
+    if(reward.admin)gameState.adminMode=true;
+    if(reward.cash)gameState.cash+=reward.cash;
+    if(reward.crypto)gameState.crypto=+(gameState.crypto+reward.crypto).toFixed(4);
+    if(reward.score)gameState.score+=reward.score;
+    if(reward.xp)gameState.jobXp+=reward.xp;
+    if(reward.skin){if(!gameState.unlockedSkins.includes(reward.skin))gameState.unlockedSkins.push(reward.skin);gameState.activeSkin=reward.skin;buildPlayerModel()}
+    saveGame();updateHUD();renderPromoModal();
+    showToast(reward.admin?'👑 АДМИН-РЕЖИМ АКТИВИРОВАН! Бесконечные деньги, опыт и скин Администратора!':`🎉 Промокод ${code} активирован!`);
+}
+
+function renderAccountModal(){
+    $('modal-body').innerHTML=activeAccount
+        ?`<div class="card active-card" style="flex-direction:row;align-items:center;flex-wrap:wrap"><div><div style="font-size:11px;color:#4ade80;font-weight:700">● ОБЛАЧНЫЙ ПРОФИЛЬ АКТИВЕН</div><h4>${activeAccount.username}</h4><p>Баланс: ${gameState.adminMode?'∞':'$'+Math.floor(gameState.cash+gameState.bank)} | Очки: ${gameState.adminMode?'∞':gameState.score} | Скинов: ${gameState.unlockedSkins.length}/${SKINS.length}</p></div><button class="btn btn-danger" onclick="logoutAcc()">Выйти</button></div><div class="grid-cards"><div class="card"><h4>☁️ Сохранить в облако</h4><p>Отправить прогресс на сервер.</p><button class="btn btn-success" onclick="syncCloud(true)">Сохранить</button></div><div class="card"><h4>📥 Загрузить с сервера</h4><p>Восстановить прогресс аккаунта.</p><button class="btn btn-cloud" onclick="pullCloud(true)">Загрузить</button></div></div>`
+        :`<div class="card"><h4>Вход или Регистрация</h4><p>Придумайте логин и пароль — прогресс привяжется к облаку и будет доступен с любого устройства.</p><input id="acc-u" class="form-input" placeholder="Логин (3-20 латинских символов)"><input id="acc-p" type="password" class="form-input" placeholder="Пароль (от 4 символов)"><div style="display:flex;gap:8px;flex-wrap:wrap"><button class="btn btn-success" onclick="authAcc('reg')">✨ Создать аккаунт</button><button class="btn btn-cloud" onclick="authAcc('log')">🔑 Войти</button></div></div>`;
+}
+async function authAcc(m){
+    const u=$('acc-u').value.trim(),p=$('acc-p').value;
+    if(!/^[a-zA-Z0-9_]{3,20}$/.test(u)||p.length<4)return showToast('⚠️ Логин 3-20 символов (лат.) и пароль от 4 символов');
+    const h=await hashPass(p);
+    try{
+        const ex=await cloudGet(u);
+        if(m==='reg'){if(ex)return showToast('⚠️ Логин занят');cloudOnline=await cloudSet(u,h,gameState)}
+        else{if(!ex)return showToast('⚠️ Аккаунт не найден');if(ex.h!==h)return showToast('❌ Неверный пароль');gameState={...defaultState,...ex.st};applyState();cloudOnline=true}
+    }catch{cloudOnline=false}
+    activeAccount={username:u,passHash:h};safeStore.set(SESSION_KEY,JSON.stringify(activeAccount));safeStore.set(uKey(u),JSON.stringify(gameState));
+    updateBadge();renderAccountModal();showToast(`✅ Вы вошли как ${u}`);
+}
+function logoutAcc(){activeAccount=null;cloudOnline=false;safeStore.del(SESSION_KEY);updateBadge();renderAccountModal()}
+
+function renderJobsModal(){
+    const cur=JOBS.find(j=>j.id===gameState.jobId)||JOBS[0];
+    $('modal-body').innerHTML=`<div class="card" style="flex-direction:row;align-items:center;flex-wrap:wrap"><div><p>Должность (Опыт: ${gameState.adminMode?'∞':gameState.jobXp+' XP'}):</p><h4>${cur.title}</h4></div><div style="display:flex;gap:8px">${cur.id!=='unemployed'?`<button class="btn btn-success" onclick="workShift()">⚡ Смена (+$${cur.pay})</button>`:''}<button class="btn btn-warning" onclick="closeModal();spawnDelivery()">📦 Заказ курьера</button></div></div><div class="grid-cards">${JOBS.filter(j=>j.id!=='unemployed').map(j=>`<div class="card"><div><h4>${j.title}</h4><p>${j.desc}</p></div><div><div class="card-price">$${j.pay} / смена (${j.reqXp} XP)</div><button class="btn ${gameState.jobXp>=j.reqXp?'btn-success':''}" style="width:100%;margin-top:6px" ${gameState.jobId===j.id||gameState.jobXp<j.reqXp?'disabled':''} onclick="gameState.jobId='${j.id}';saveGame();updateHUD();renderJobsModal()">${gameState.jobId===j.id?'Текущая работа':(gameState.jobXp>=j.reqXp?'Устроиться':'Мало опыта')}</button></div></div>`).join('')}</div>`;
+}
+function workShift(){
+    const j=JOBS.find(x=>x.id===gameState.jobId);if(!j||gameState.energy<j.energyCost)return showToast('⚠️ Мало энергии!');
+    const sk=SKINS.find(x=>x.id===gameState.activeSkin)||SKINS[0],earn=Math.round(j.pay*(gameState.activePet==='drone'?1.2:1)*sk.payBonus);
+    gameState.energy-=j.energyCost;gameState.cash+=earn;gameState.jobXp+=30;gameState.score+=Math.round(35*(gameState.activePet==='dog'?1.1:1));
+    saveGame();updateHUD();renderJobsModal();showToast(`💼 +$${earn}, +30 XP!`);
+}
+
+function renderBankModal(){
+    $('modal-body').innerHTML=`<div class="grid-cards"><div class="card"><h4>💵 Наличные</h4><div class="card-price">${gameState.adminMode?'∞ ($999M+)':'$'+Math.floor(gameState.cash)}</div></div><div class="card"><h4>🏦 Вклад (+0.2%)</h4><div class="card-price" style="color:#fbbf24">${gameState.adminMode?'∞ ($999M+)':'$'+Math.floor(gameState.bank)}</div></div></div><div class="card" style="flex-direction:row;align-items:center;flex-wrap:wrap"><input type="number" id="b-amt" value="500"><button class="btn btn-success" onclick="bAct('in')">Положить</button><button class="btn btn-warning" onclick="bAct('out')">Снять</button><button class="btn" onclick="bAct('all')">Всё на вклад</button></div>`;
+}
+function bAct(t){
+    const v=Math.floor(Number($('b-amt').value));
+    if(t==='in'&&v>0&&gameState.cash>=v){gameState.cash-=v;gameState.bank+=v}
+    else if(t==='out'&&v>0&&gameState.bank>=v){gameState.bank-=v;gameState.cash+=v}
+    else if(t==='all'&&gameState.cash>0){gameState.bank+=Math.floor(gameState.cash);gameState.cash=0}
+    else return showToast('⚠️ Недостаточно средств');
+    saveGame();updateHUD();renderBankModal();
+}
+
+function renderCryptoModal(){
+    $('modal-body').innerHTML=`<div class="card" style="flex-direction:row;align-items:center"><div><p>Курс MetroCoin</p><h4 style="color:#c084fc;font-size:20px">$${cryptoPrice.toFixed(2)}</h4></div><div><p>Портфель</p><h4>${gameState.crypto.toFixed(2)} MTC ($${(gameState.crypto*cryptoPrice).toFixed(1)})</h4></div></div><canvas id="crypto-chart" width="600" height="140"></canvas><div class="card" style="flex-direction:row;align-items:center;flex-wrap:wrap"><input type="number" id="c-qty" value="1" step="0.5"><button class="btn btn-success" onclick="cAct('buy')">Купить</button><button class="btn btn-danger" onclick="cAct('sell')">Продать</button><button class="btn btn-purple" onclick="cAct('all')">Продать всё</button></div>`;
+    const c=$('crypto-chart'),x=c.getContext('2d'),mn=Math.min(...cryptoHistory)*.95,mx=Math.max(...cryptoHistory)*1.05;
+    x.strokeStyle='#c084fc';x.lineWidth=3;x.beginPath();cryptoHistory.forEach((v,i)=>{const px=i*(c.width/(cryptoHistory.length-1)),py=c.height-((v-mn)/(mx-mn))*(c.height-20)-10;i?x.lineTo(px,py):x.moveTo(px,py)});x.stroke();
+}
+function cAct(t){
+    const q=Number($('c-qty').value);
+    if(t==='buy'&&q>0&&gameState.cash>=q*cryptoPrice){gameState.cash-=q*cryptoPrice;gameState.crypto=+(gameState.crypto+q).toFixed(4)}
+    else if(t==='sell'&&q>0&&gameState.crypto>=q){gameState.crypto=+(gameState.crypto-q).toFixed(4);gameState.cash+=q*cryptoPrice}
+    else if(t==='all'&&gameState.crypto>0){gameState.cash+=gameState.crypto*cryptoPrice;gameState.crypto=0}
+    else return showToast('⚠️ Ошибка сделки');
+    saveGame();updateHUD();renderCryptoModal();
+}
+
+function renderSkinPreviewSVG(s){
+    const hats={crown:'<polygon points="22,12 26,4 32,10 38,4 42,12" fill="#facc15"/>',admin:'<polygon points="21,12 25,3 32,9 39,3 43,12" fill="#ef4444"/><rect x="23" y="17" width="18" height="3" fill="#ef4444"/>',cap:'<rect x="21" y="8" width="22" height="6" rx="2" fill="#ef4444"/><rect x="28" y="12" width="18" height="3" fill="#111827"/>',visor:`<rect x="23" y="17" width="18" height="4" fill="${s.aura||'#38bdf8'}"/>`,glasses:'<rect x="23" y="17" width="18" height="3" fill="#020617"/>',horns:'<polygon points="22,12 19,3 26,11" fill="#facc15"/><polygon points="42,12 45,3 38,11" fill="#facc15"/>',space:'<circle cx="32" cy="19" r="12" fill="#f59e0b" fill-opacity="0.55" stroke="#fff"/>'};
+    return `<svg width="64" height="72" viewBox="0 0 64 72">${s.aura?`<ellipse cx="32" cy="66" rx="22" ry="5" fill="none" stroke="${s.aura}" stroke-width="2.5"/>`:''}<rect x="22" y="12" width="20" height="15" rx="3" fill="${s.skin}"/>${hats[s.acc]||''}<rect x="18" y="28" width="28" height="22" rx="3" fill="${s.shirt}"/><rect x="12" y="29" width="5" height="19" rx="2" fill="${s.shirt}"/><rect x="47" y="29" width="5" height="19" rx="2" fill="${s.shirt}"/><rect x="20" y="50" width="10" height="16" fill="${s.pants}"/><rect x="34" y="50" width="10" height="16" fill="${s.pants}"/></svg>`;
+}
+
+function renderShopModal(tab){
+    const tabs=[['skins',`👕 Скины (${gameState.unlockedSkins.length}/${SKINS.length})`],['pets','🐾 Питомцы'],['cars','🏎️ Автосалон'],['items','🍔 Еда и Вещи']];
+    let cards='';
+    if(tab==='skins')cards=SKINS.filter(s=>s.price!==-2||gameState.unlockedSkins.includes(s.id)).map(s=>{const own=gameState.unlockedSkins.includes(s.id),act=gameState.activeSkin===s.id,isPromo=s.price<0;return `<div class="card ${act?'active-card':''}"><div><div class="skin-preview">${renderSkinPreviewSVG(s)}<span class="rarity-badge" style="background:${s.rColor};color:#fff">${s.rarity}</span></div><h4 style="margin-top:6px">${s.name}</h4><p>${s.desc}</p></div><div><div class="card-price" style="margin-bottom:5px">${own?'В гардеробе':(isPromo?'Только по промокоду':'$'+s.price)}</div>${act?'<button class="btn" disabled style="width:100%">Надето</button>':own?`<button class="btn" style="width:100%" onclick="gameState.activeSkin='${s.id}';buildPlayerModel();saveGame();renderShopModal('skins')">Надеть</button>`:isPromo?'<button class="btn btn-pink" style="width:100%" onclick="openModal(\'promo\')">🎁 Ввести промокод</button>':`<button class="btn btn-success" style="width:100%" onclick="buyShop('skin','${s.id}')">Купить скин</button>`}</div></div>`}).join('');
+    else if(tab==='pets')cards=PETS.map(p=>{const own=gameState.unlockedPets.includes(p.id),act=gameState.activePet===p.id;return `<div class="card ${act?'active-card':''}"><div><h4>${p.name}</h4><p>${p.bonus}</p></div><div><div class="card-price" style="margin-bottom:5px">${own?'Куплено':'$'+p.price}</div>${act?'<button class="btn" disabled style="width:100%">Активен</button>':own?`<button class="btn" style="width:100%" onclick="gameState.activePet='${p.id}';buildPetModel();saveGame();renderShopModal('pets')">Вызвать</button>`:`<button class="btn btn-success" style="width:100%" onclick="buyShop('pet','${p.id}')">Купить</button>`}</div></div>`}).join('');
+    else if(tab==='cars')cards=VEHICLES.map(v=>{const own=gameState.unlockedVehicles.includes(v.id),act=gameState.equippedVehicle===v.id;return `<div class="card ${act?'active-card':''}"><div><h4>${v.name}</h4><p>${v.desc}</p></div><div><div class="card-price" style="margin-bottom:5px">${own?'В гараже':'$'+v.price}</div>${act?'<button class="btn" disabled style="width:100%">Выбрано</button>':own?`<button class="btn" style="width:100%" onclick="gameState.equippedVehicle='${v.id}';buildCarModel();saveGame();renderShopModal('cars')">Выбрать</button>`:`<button class="btn btn-success" style="width:100%" onclick="buyShop('car','${v.id}')">Купить</button>`}</div></div>`}).join('');
+    else cards=SHOP_ITEMS.map(i=>`<div class="card"><div><h4>${i.name}</h4><p>${i.desc}</p></div><div><div class="card-price" style="margin-bottom:5px">$${i.price}</div><button class="btn btn-success" style="width:100%" onclick="buyShop('item','${i.id}')">Купить</button></div></div>`).join('');
+    $('modal-body').innerHTML=`<div style="display:flex;gap:6px;flex-wrap:wrap">${tabs.map(([k,l])=>`<button class="btn ${tab===k?'btn-success':''}" onclick="renderShopModal('${k}')">${l}</button>`).join('')}</div><div class="grid-cards">${cards}</div>`;
+}
+
+function buyShop(type,id){
+    const map={skin:[SKINS,'unlockedSkins','activeSkin',120,buildPlayerModel,'skins',x=>`👕 Скин «${x.name}» надет!`],pet:[PETS,'unlockedPets','activePet',150,buildPetModel,'pets',x=>`🐾 Питомец «${x.name}» куплен!`],car:[VEHICLES,'unlockedVehicles','equippedVehicle',300,buildCarModel,'cars',x=>`🏎️ Авто «${x.name}» куплено!`]};
+    if(type==='item'){
+        const i=SHOP_ITEMS.find(x=>x.id===id);if(gameState.cash<i.price)return showToast('⚠️ Недостаточно денег');
+        gameState.cash-=i.price;const ex=gameState.inventory.find(x=>x.id===id);if(ex)ex.count++;else gameState.inventory.push({...i,count:1});
+        if(id==='watch')gameState.score+=500;saveGame();updateHUD();return showToast(`🛍️ Куплено: ${i.name}`);
+    }
+    const [list,arrKey,actKey,pts,rebuild,tabName,msgFn]=map[type],item=list.find(x=>x.id===id);
+    if(gameState.cash<item.price)return showToast('⚠️ Недостаточно денег');
+    gameState.cash-=item.price;gameState[arrKey].push(id);gameState[actKey]=id;gameState.score+=pts;
+    rebuild();saveGame();updateHUD();renderShopModal(tabName);showToast(msgFn(item));
+}
+
+function renderInventoryModal(){
+    $('modal-body').innerHTML=`<div class="grid-cards">${gameState.inventory.length?gameState.inventory.map((it,idx)=>`<div class="card"><div><h4>${it.name} (x${it.count})</h4><p>${it.desc}</p></div>${it.energy?`<button class="btn btn-success" onclick="useInv(${idx})">Съесть/Выпить</button>`:'<span style="font-size:11px;color:#38bdf8">Активно</span>'}</div>`).join(''):'<p style="color:#94a3b8">Рюкзак пуст</p>'}</div><div style="display:flex;justify-content:space-between;border-top:1px solid #334155;padding-top:10px"><button class="btn" onclick="saveGame();syncCloud(true)">💾 Сохранить всё</button><button class="btn btn-danger" onclick="resetGame()">🗑️ Сброс</button></div>`;
+}
+function useInv(idx){const it=gameState.inventory[idx];if(!it?.energy)return;gameState.energy=Math.min(100,gameState.energy+Math.round(it.energy*(gameState.activePet==='cat'?1.15:1)));if(--it.count<=0)gameState.inventory.splice(idx,1);saveGame();updateHUD();renderInventoryModal()}
+
+let last=performance.now();
+function loop(now){
+    requestAnimationFrame(loop);
+    const dt=Math.min(.05,(now-last)/1000);last=now;
+    updatePhysics(dt);drawMinimap();renderer.render(scene,camera);
+}
+function handleResize(){
+    if(!renderer||!camera)return;
+    const {w,h}=getViewportSize();
+    camera.aspect=w/h;camera.updateProjectionMatrix();renderer.setSize(w,h,false);
+}
+window.addEventListener('resize',handleResize);
+
+function bootGame(){
+    loadGame();updateHUD();
+    if(init3DEngine()){applyState();handleResize();setInterval(saveGame,10000);last=performance.now();requestAnimationFrame(loop)}
+}
+document.readyState==='loading'?document.addEventListener('DOMContentLoaded',bootGame):bootGame();
+</script>
+</body>
+</html>
